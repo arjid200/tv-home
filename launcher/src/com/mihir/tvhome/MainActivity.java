@@ -15,6 +15,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Outline;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -237,7 +239,7 @@ public class MainActivity extends Activity {
         bottom.setClipToPadding(false);
         hero.addView(bottom, lp(-1, -2, Gravity.BOTTOM, dp(48), 0, dp(48), dp(30)));
 
-        title = text(34, "sans-serif-light", Color.WHITE);
+        title = text(36, "monospace", Color.WHITE);
         title.setShadowLayer(dp(18), 0, 0, 0x66000000);
         title.setSingleLine(true);
         bottom.addView(title, new LinearLayout.LayoutParams(-2, -2));
@@ -248,15 +250,15 @@ public class MainActivity extends Activity {
         dockRow.setGravity(Gravity.CENTER);
         dockRow.setClipChildren(false);
         dockRow.setClipToPadding(false);
-        dockRow.setPadding(dp(20), dp(22), dp(20), dp(22));
+        dockRow.setPadding(dp(16), dp(18), dp(16), dp(18));
         GradientDrawable band = new GradientDrawable();
-        band.setCornerRadius(dp(26));
-        band.setColor(0x1FFFFFFF);
-        band.setStroke(dp(1), 0x14FFFFFF);
+        band.setCornerRadius(dp(8));
+        band.setColor(0xCC0D0D0D);
+        band.setStroke(dp(1), 0x22FFFFFF);
         dockRow.setBackground(band);
         bottom.addView(dockRow, new LinearLayout.LayoutParams(-1, -2));
 
-        appsLabel = text(11, "sans-serif-medium", 0x99FFFFFF);
+        appsLabel = text(11, "monospace", 0x99FFFFFF);
         appsLabel.setText("ALL APPS");
         appsLabel.setLetterSpacing(0.22f);
         content.addView(appsLabel, llp(-2, -2, dp(68), dp(8), 0, dp(18)));
@@ -283,14 +285,14 @@ public class MainActivity extends Activity {
 
         LinearLayout clockRow = new LinearLayout(this);
         clockRow.setGravity(Gravity.BOTTOM);
-        clock = text(54, "sans-serif-thin", Color.WHITE);
+        clock = text(56, "monospace", Color.WHITE);
         clock.setIncludeFontPadding(false);
         clockRow.addView(clock);
         ampm = text(12, "sans-serif-light", 0xCCFFFFFF);
         clockRow.addView(ampm, llp(-2, -2, dp(6), 0, 0, dp(8)));
         left.addView(clockRow, llp(-2, -2, 0, dp(2), 0, dp(2)));
 
-        date = text(10, "sans-serif-medium", 0x99FFFFFF);
+        date = text(10, "monospace", 0x99FFFFFF);
         date.setSingleLine(true);
         date.setPadding(0, 0, dp(16), 0); // letterSpacing is not counted in the measured width
         date.setLetterSpacing(0.22f);
@@ -328,8 +330,9 @@ public class MainActivity extends Activity {
         bg.setStroke(dp(1), 0x33FFFFFF);
         p.setBackground(bg);
         p.setOnFocusChangeListener((v, has) -> {
-            bg.setColor(has ? 0xF2FFFFFF : 0x66000000);
-            ((TextView) v).setTextColor(has ? 0xFF111111 : 0xE6FFFFFF);
+            bg.setColor(has ? 0xFFD71921 : 0x66000000);
+            bg.setStroke(dp(1), has ? 0xFFD71921 : 0x33FFFFFF);
+            ((TextView) v).setTextColor(Color.WHITE);
             v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f)
                     .setInterpolator(new OvershootInterpolator(2f)).setDuration(220).start();
             if (has) { lastFocusedId = v.getId(); scroll.smoothScrollTo(0, 0); fadeGlow(1f); }
@@ -420,11 +423,11 @@ public class MainActivity extends Activity {
         card.setClipToOutline(true);
         card.setOutlineProvider(new ViewOutlineProvider() {
             @Override public void getOutline(View v, Outline o) {
-                o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(10));
+                o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(4));
             }
         });
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(app.isBanner ? 0xFF1C1C1E : darken(app.color, 0.45f));
+        bg.setColor(0xFF0F0F0F);
         card.setBackground(bg);
 
         ImageView img = new ImageView(this);
@@ -438,12 +441,11 @@ public class MainActivity extends Activity {
             img.setPadding(dp(22), dp(14), dp(22), dp(14));
         }
 
-        // Focus ring and sheen, drawn above the art.
+        // Focus ring: Signature Nothing Red (#D71921), 4dp radius, 3dp stroke
         GradientDrawable ring = new GradientDrawable();
-        ring.setCornerRadius(dp(10));
-        ring.setStroke(dp(2), 0xE6FFFFFF);
-        ring.setOrientation(GradientDrawable.Orientation.TL_BR);
-        ring.setColors(new int[]{0x26FFFFFF, 0x00FFFFFF, 0x00FFFFFF});
+        ring.setCornerRadius(dp(4));
+        ring.setStroke(dp(3), 0xFFD71921);
+        ring.setColor(0x00000000);
         View shine = new View(this);
         shine.setBackground(ring);
         shine.setAlpha(0f);
@@ -472,7 +474,7 @@ public class MainActivity extends Activity {
             if (!has) return;
             lastFocusedId = v.getId();
             if (inDock) {
-                title.setText(app.label);
+                title.setText(app.label.toUpperCase(Locale.ROOT));
                 title.animate().alpha(1f).setDuration(200).start();
                 animateGlow(app.color);
                 fadeGlow(1f);
@@ -622,15 +624,27 @@ public class MainActivity extends Activity {
     }
 
     private void updateWifi() {
-        String name = "Wi-Fi";
+        String name = "Offline";
         try {
-            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
-            if (wm != null && wm.getConnectionInfo() != null) {
-                String s = wm.getConnectionInfo().getSSID();
-                if (s != null && !s.contains("unknown ssid")) name = s.replace("\"", "");
-                if (wm.getConnectionInfo().getNetworkId() == -1) name = "Offline";
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                android.net.Network active = cm.getActiveNetwork();
+                if (active != null) {
+                    android.net.NetworkCapabilities caps = cm.getNetworkCapabilities(active);
+                    if (caps != null && (caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                            || caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED))) {
+                        name = "Connected";
+                        WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+                        if (wm != null && wm.getConnectionInfo() != null) {
+                            String s = wm.getConnectionInfo().getSSID();
+                            if (s != null && !s.contains("unknown ssid") && !s.isEmpty() && !s.equals("\"\"")) {
+                                name = s.replace("\"", "").trim();
+                            }
+                        }
+                    }
+                }
             }
-        } catch (SecurityException ignored) { }
+        } catch (Exception ignored) { }
         wifiPill.setText("◉  " + name);
     }
 
