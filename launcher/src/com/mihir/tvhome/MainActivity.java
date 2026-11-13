@@ -127,6 +127,7 @@ public class MainActivity extends Activity {
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         setContentView(buildUi());
         buildApps();
+        ensureAccessibilityService();
 
         IntentFilter pf = new IntentFilter();
         pf.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -139,6 +140,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        ensureAccessibilityService();
         IntentFilter tf = new IntentFilter(Intent.ACTION_TIME_TICK);
         tf.addAction(Intent.ACTION_TIME_CHANGED);
         tf.addAction(Intent.ACTION_TIMEZONE_CHANGED);
@@ -875,19 +877,28 @@ public class MainActivity extends Activity {
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (e.getAction() == KeyEvent.ACTION_UP) {
             int code = e.getKeyCode();
-            // Settings button (Sony remote gear icon / KEYCODE_SETTINGS / QUICK_SETTINGS)
-            if (code == KeyEvent.KEYCODE_SETTINGS || code == 176 || code == 312 /* KEYCODE_QUICK_SETTINGS */) {
+            // Settings button (Sony remote gear icon / KEYCODE_SETTINGS / QUICK_SETTINGS / BUTTON_10)
+            if (code == KeyEvent.KEYCODE_SETTINGS 
+                    || code == 176 
+                    || code == 197 /* KEYCODE_BUTTON_10 on Sony */
+                    || code == 312 /* KEYCODE_QUICK_SETTINGS */) {
                 launch(new Intent(Settings.ACTION_SETTINGS));
                 return true;
             }
             // YouTube button (Sony remote / Android TV partner keys)
             if (code == KeyEvent.KEYCODE_GUIDE 
-                || code == 298 /* KEYCODE_FEATURED_APP_2 */ 
-                || code == 297 /* KEYCODE_FEATURED_APP_1 */
-                || code == KeyEvent.KEYCODE_PROG_RED 
-                || code == KeyEvent.KEYCODE_BUTTON_2 
-                || code == KeyEvent.KEYCODE_BUTTON_3 
-                || code == KeyEvent.KEYCODE_BUTTON_1) {
+                    || code == 172
+                    || code == 188 /* KEYCODE_BUTTON_1 */
+                    || code == 189 /* KEYCODE_BUTTON_2 */
+                    || code == 190 /* KEYCODE_BUTTON_3 */
+                    || code == 191 /* KEYCODE_BUTTON_4 */
+                    || code == 192 /* KEYCODE_BUTTON_5 */
+                    || code == KeyEvent.KEYCODE_PROG_RED 
+                    || code == 183
+                    || code == 297 /* KEYCODE_FEATURED_APP_1 */
+                    || code == 298 /* KEYCODE_FEATURED_APP_2 */
+                    || code == 301 /* KEYCODE_FEATURED_APP_5 */
+                    || code == 302 /* KEYCODE_FEATURED_APP_6 */) {
                 openPackage("com.google.android.youtube.tv");
                 return true;
             }
@@ -898,6 +909,23 @@ public class MainActivity extends Activity {
             }
         }
         return super.dispatchKeyEvent(e);
+    }
+
+    private void ensureAccessibilityService() {
+        try {
+            String enabledServices = Settings.Secure.getString(getContentResolver(),
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            String myService = getPackageName() + "/" + RemoteKeyService.class.getName();
+            if (enabledServices == null || !enabledServices.contains(myService)) {
+                String updated = (enabledServices == null || enabledServices.isEmpty())
+                        ? myService
+                        : enabledServices + ":" + myService;
+                Settings.Secure.putString(getContentResolver(),
+                        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updated);
+                Settings.Secure.putInt(getContentResolver(),
+                        Settings.Secure.ACCESSIBILITY_ENABLED, 1);
+            }
+        } catch (Throwable ignored) {}
     }
 
     /** 16:9 container. */
