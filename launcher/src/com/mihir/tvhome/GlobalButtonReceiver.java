@@ -77,20 +77,43 @@ public class GlobalButtonReceiver extends BroadcastReceiver {
                 return;
             }
 
-            // Handle YouTube button
-            if (code == KeyEvent.KEYCODE_GUIDE 
-                    || code == 172
-                    || code == 188 /* KEYCODE_BUTTON_1 */
-                    || code == 189 /* KEYCODE_BUTTON_2 */
-                    || code == 190 /* KEYCODE_BUTTON_3 */
-                    || code == 191 /* KEYCODE_BUTTON_4 */
-                    || code == 192 /* KEYCODE_BUTTON_5 */
-                    || code == 183 /* KEYCODE_PROG_RED */
-                    || code == 297 /* KEYCODE_FEATURED_APP_1 */
-                    || code == 298 /* KEYCODE_FEATURED_APP_2 */
-                    || code == 301 /* KEYCODE_FEATURED_APP_5 */
-                    || code == 302 /* KEYCODE_FEATURED_APP_6 */) {
+            // Dedicated YouTube button (201 / GUIDE 172)
+            if (code == 201 /* KEYCODE_BUTTON_14 */ 
+                    || code == KeyEvent.KEYCODE_GUIDE 
+                    || code == 172) {
                 launchPackage(context, "com.google.android.youtube.tv");
+                return;
+            }
+
+            // Dedicated Netflix button (190)
+            if (code == 190 /* KEYCODE_BUTTON_3 */) {
+                launchPackage(context, "com.netflix.ninja");
+                return;
+            }
+
+            // Dedicated Prime Video button (188)
+            if (code == 188 /* KEYCODE_BUTTON_1 */) {
+                launchPackage(context, "com.amazon.amazonvideo.livingroom");
+                return;
+            }
+
+            // Dedicated Disney+ / Hotstar (196 / 3005)
+            if (code == 196 || code == 3005) {
+                if (!launchPackage(context, "in.startv.hotstar")) {
+                    launchPackage(context, "com.disney.disneyplus");
+                }
+                return;
+            }
+
+            // Dedicated Sony Pictures Core (245)
+            if (code == 245) {
+                launchPackage(context, "com.sonypicturescore");
+                return;
+            }
+
+            // Dedicated YouTube Music (202)
+            if (code == 202) {
+                launchPackage(context, "com.google.android.youtube.tvmusic");
             }
         }
     }
@@ -105,18 +128,20 @@ public class GlobalButtonReceiver extends BroadcastReceiver {
         }
     }
 
-    private static void launchPackage(Context context, String pkg) {
+    private static boolean launchPackage(Context context, String pkg) {
         try {
             Intent intent = context.getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
             if (intent == null) intent = context.getPackageManager().getLaunchIntentForPackage(pkg);
             if (intent != null) {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
+                return true;
             } else {
                 Log.w(TAG, "No launch intent found for " + pkg);
             }
         } catch (Throwable t) {
             Log.e(TAG, "Failed to launch package " + pkg + ": " + t.getMessage());
         }
+        return false;
     }
 }
