@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Android 11 only reveals the Wi-Fi name to apps holding location; granted over ADB at install. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <uses-permission android:name="com.google.android.permission.GLOBAL_BUTTON" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -63,6 +66,9 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.GLOBAL_BUTTON" />
+                <action android:name="com.google.global_button.ACTION_LAUNCH_APP" />
+                <action android:name="com.realtek.tv.actionmenu.GLOBAL_BUTTON" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
     </application>
