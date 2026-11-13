@@ -835,10 +835,11 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void openPackage(String pkg) {
+    private boolean openPackage(String pkg) {
         Intent i = getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
         if (i == null) i = getPackageManager().getLaunchIntentForPackage(pkg);
-        if (i != null) launch(i);
+        if (i != null) return launch(i);
+        return false;
     }
 
     private TextView text(float sp, String family, int color) {
@@ -885,21 +886,36 @@ public class MainActivity extends Activity {
                 launch(new Intent(Settings.ACTION_SETTINGS));
                 return true;
             }
-            // YouTube button (Sony remote / Android TV partner keys)
-            if (code == KeyEvent.KEYCODE_GUIDE 
-                    || code == 172
-                    || code == 188 /* KEYCODE_BUTTON_1 */
-                    || code == 189 /* KEYCODE_BUTTON_2 */
-                    || code == 190 /* KEYCODE_BUTTON_3 */
-                    || code == 191 /* KEYCODE_BUTTON_4 */
-                    || code == 192 /* KEYCODE_BUTTON_5 */
-                    || code == KeyEvent.KEYCODE_PROG_RED 
-                    || code == 183
-                    || code == 297 /* KEYCODE_FEATURED_APP_1 */
-                    || code == 298 /* KEYCODE_FEATURED_APP_2 */
-                    || code == 301 /* KEYCODE_FEATURED_APP_5 */
-                    || code == 302 /* KEYCODE_FEATURED_APP_6 */) {
+            // Dedicated YouTube button (Sony remote maps to 201 [BUTTON_14] or 172 [GUIDE])
+            if (code == 201 /* KEYCODE_BUTTON_14 */ 
+                    || code == KeyEvent.KEYCODE_GUIDE 
+                    || code == 172) {
                 openPackage("com.google.android.youtube.tv");
+                return true;
+            }
+            // Dedicated Netflix button (Sony remote maps to 190 [BUTTON_3])
+            if (code == 190 /* KEYCODE_BUTTON_3 */) {
+                openPackage("com.netflix.ninja");
+                return true;
+            }
+            // Dedicated Prime Video button (Sony remote maps to 188 [BUTTON_1])
+            if (code == 188 /* KEYCODE_BUTTON_1 */) {
+                openPackage("com.amazon.amazonvideo.livingroom");
+                return true;
+            }
+            // Dedicated Disney+ / Hotstar button
+            if (code == 196 || code == 3005) {
+                if (!openPackage("in.startv.hotstar")) openPackage("com.disney.disneyplus");
+                return true;
+            }
+            // Dedicated Sony Pictures Core
+            if (code == 245) {
+                openPackage("com.sonypicturescore");
+                return true;
+            }
+            // Dedicated YouTube Music
+            if (code == 202) {
+                openPackage("com.google.android.youtube.tvmusic");
                 return true;
             }
             // Menu key on the remote opens the Inputs dropdown.
