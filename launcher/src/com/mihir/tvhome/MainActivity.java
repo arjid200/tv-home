@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
     private ValueAnimator glowAnim;
     private int lastFocusedId = View.NO_ID;
     private boolean firstShow = true;
+    private static boolean autoBootTriggered = false;
     private int packageSeq;
     private PopupWindow inputsPopup;
 
@@ -151,6 +152,20 @@ public class MainActivity extends Activity {
         // Catch installs/removals that happened while another app was in front.
         if (getPackageManager().getChangedPackages(packageSeq) != null) buildApps();
         if (firstShow) { firstShow = false; playEntrance(); }
+        // Auto-boot to configured HDMI input on cold boot / wake
+        if (!autoBootTriggered) {
+            autoBootTriggered = true;
+            android.content.SharedPreferences sp = getSharedPreferences("tvhome_prefs", MODE_PRIVATE);
+            boolean shouldBoot = sp.getBoolean("auto_boot_input", true);
+            String targetInput = sp.getString("last_input_id", "com.realtek.tv.passthrough/.hdmiinput.HDMITvInputService/HW151519488");
+            if (shouldBoot && targetInput != null) {
+                handler.postDelayed(() -> {
+                    Intent i = new Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(targetInput));
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    launch(i);
+                }, 800);
+            }
+        }
         // New photo on return if the current one has been up for the full interval.
         if (wallIndex < 0 || SystemClock.elapsedRealtime() - wallChangedAt >= WALLPAPER_INTERVAL_MS) nextWallpaper();
         else scheduleWallpaper(WALLPAPER_INTERVAL_MS - (SystemClock.elapsedRealtime() - wallChangedAt));
@@ -547,8 +562,12 @@ public class MainActivity extends Activity {
         bg.setStroke(dp(1), 0x26FFFFFF);
         list.setBackground(bg);
 
-        PopupWindow pw = new PopupWindow(list, dp(200), -2, true);
+        PopupWindow pw = new PopupWindow(list, dp(240), -2, true);
         List<TextView> rows = new ArrayList<>();
+
+        android.content.SharedPreferences sp = getSharedPreferences("tvhome_prefs", MODE_PRIVATE);
+        boolean autoBoot = sp.getBoolean("auto_boot_input", true);
+        String savedInputId = sp.getString("last_input_id", "com.realtek.tv.passthrough/.hdmiinput.HDMITvInputService/HW151519488");
 
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         List<TvInputInfo> inputs = new ArrayList<>();
@@ -557,12 +576,27 @@ public class MainActivity extends Activity {
         }
         Collections.sort(inputs, (x, y) -> inputLabel(x).compareToIgnoreCase(inputLabel(y)));
         for (TvInputInfo t : inputs) {
-            rows.add(inputRow(inputLabel(t), () -> {
+            boolean isCurrent = t.getId().equals(savedInputId);
+            rows.add(inputRow(inputLabel(t) + (isCurrent ? "  ★" : ""), () -> {
+                sp.edit().putString("last_input_id", t.getId()).putString("last_input_label", inputLabel(t)).apply();
                 Intent i = new Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(t.getId()));
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 if (!launch(i)) openPackage(inputPickerPkg);
             }));
         }
+
+        // Toggle row for auto-booting into input
+        String autoLabel = "Auto-boot input: " + (autoBoot ? "[ON]" : "[OFF]");
+        rows.add(inputRow(autoLabel, () -> {
+            boolean next = !sp.getBoolean("auto_boot_input", true);
+            sp.edit().putBoolean("auto_boot_input", next).apply();
+            if (next && sp.getString("last_input_id", null) == null && !inputs.isEmpty()) {
+                sp.edit().putString("last_input_id", inputs.get(0).getId()).putString("last_input_label", inputLabel(inputs.get(0))).apply();
+            }
+            if (inputsPopup != null) inputsPopup.dismiss();
+            showInputs(anchor);
+        }));
+
         if (isInstalled(liveTvPkg)) rows.add(inputRow("Live TV", () -> openPackage(liveTvPkg)));
         if (inputs.isEmpty() && isInstalled(inputPickerPkg)) rows.add(inputRow("All sources…", () -> openPackage(inputPickerPkg)));
 
@@ -839,10 +873,29 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
-        // Menu key on the remote opens the Inputs dropdown.
-        if (e.getKeyCode() == KeyEvent.KEYCODE_MENU && e.getAction() == KeyEvent.ACTION_UP && !pills.isEmpty()) {
-            showInputs(pills.get(0));
-            return true;
+        if (e.getAction() == KeyEvent.ACTION_UP) {
+            int code = e.getKeyCode();
+            // Settings button (Sony remote gear icon / KEYCODE_SETTINGS / QUICK_SETTINGS)
+            if (code == KeyEvent.KEYCODE_SETTINGS || code == 176 || code == 312 /* KEYCODE_QUICK_SETTINGS */) {
+                launch(new Intent(Settings.ACTION_SETTINGS));
+                return true;
+            }
+            // YouTube button (Sony remote / Android TV partner keys)
+            if (code == KeyEvent.KEYCODE_GUIDE 
+                || code == 298 /* KEYCODE_FEATURED_APP_2 */ 
+                || code == 297 /* KEYCODE_FEATURED_APP_1 */
+                || code == KeyEvent.KEYCODE_PROG_RED 
+                || code == KeyEvent.KEYCODE_BUTTON_2 
+                || code == KeyEvent.KEYCODE_BUTTON_3 
+                || code == KeyEvent.KEYCODE_BUTTON_1) {
+                openPackage("com.google.android.youtube.tv");
+                return true;
+            }
+            // Menu key on the remote opens the Inputs dropdown.
+            if (code == KeyEvent.KEYCODE_MENU && !pills.isEmpty()) {
+                showInputs(pills.get(0));
+                return true;
+            }
         }
         return super.dispatchKeyEvent(e);
     }
